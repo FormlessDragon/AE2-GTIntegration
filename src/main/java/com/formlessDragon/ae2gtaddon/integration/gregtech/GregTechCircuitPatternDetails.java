@@ -13,12 +13,12 @@ import ae2.api.stacks.GenericStack;
 import ae2.api.stacks.KeyCounter;
 import ae2.helpers.patternprovider.PatternProviderTarget;
 import ae2.helpers.patternprovider.PseudoPatternDetails;
+import com.formlessDragon.ae2gtaddon.util.Matcher;
+import com.formlessDragon.ae2gtaddon.util.Util;
 import gregtech.api.capability.IGhostSlotConfigurable;
 import gregtech.api.metatileentity.MetaTileEntityHolder;
 import gregtech.api.metatileentity.interfaces.IGregTechTileEntity;
-import gregtech.api.recipes.ingredients.IntCircuitIngredient;
 import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.world.World;
@@ -38,34 +38,26 @@ import java.util.Set;
  * while the real item must not be inserted into the machine input inventory.</p>
  */
 public final class GregTechCircuitPatternDetails implements IPatternDetails {
-    public static final CircuitMatcher GREGTECH_CIRCUIT_MATCHER = new GregTechCircuitMatcher();
-    public static final CircuitConfigExtractor GREGTECH_CIRCUIT_CONFIG_EXTRACTOR = new GregTechCircuitConfigExtractor();
     private static final ThreadLocal<Integer> ACTIVE_CIRCUIT_CONFIGURATION = new ThreadLocal<>();
 
     private final IPatternDetails delegate;
-    private final CircuitMatcher circuitMatcher;
     private final IInput[] originalInputs;
     private final IInput[] filteredInputs;
     private final int[] filteredInputOriginalIndexes;
 
-    private GregTechCircuitPatternDetails(IPatternDetails delegate, CircuitMatcher circuitMatcher) {
+    private GregTechCircuitPatternDetails(IPatternDetails delegate) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
-        this.circuitMatcher = Objects.requireNonNull(circuitMatcher, "circuitMatcher");
         this.originalInputs = delegate.getInputs().clone();
-        InputFilterResult filtered = filterInputs(this.originalInputs, circuitMatcher);
+        InputFilterResult filtered = filterInputs(this.originalInputs);
         this.filteredInputs = filtered.inputs();
         this.filteredInputOriginalIndexes = filtered.originalIndexes();
     }
 
     public static IPatternDetails filterIntegratedCircuits(IPatternDetails patternDetails) {
-        return filterIntegratedCircuits(patternDetails, GREGTECH_CIRCUIT_MATCHER);
-    }
-
-    public static IPatternDetails filterIntegratedCircuits(IPatternDetails patternDetails, CircuitMatcher circuitMatcher) {
         if (patternDetails instanceof GregTechCircuitPatternDetails) {
             return patternDetails;
         }
-        return new GregTechCircuitPatternDetails(patternDetails, circuitMatcher);
+        return new GregTechCircuitPatternDetails(patternDetails);
     }
 
     public static IPatternDetails unwrap(IPatternDetails patternDetails) {
@@ -81,7 +73,7 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
             if (unwrappedDelegate == circuitPatternDetails.delegate) {
                 return patternDetails;
             }
-            return new GregTechCircuitPatternDetails(unwrappedDelegate, circuitPatternDetails.circuitMatcher);
+            return new GregTechCircuitPatternDetails(unwrappedDelegate);
         }
         return PseudoPatternDetails.unwrap(patternDetails);
     }
@@ -139,18 +131,10 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
     }
 
     public static OptionalInt findCircuitConfiguration(IPatternDetails patternDetails) {
-        return findCircuitConfiguration(patternDetails, GREGTECH_CIRCUIT_CONFIG_EXTRACTOR);
-    }
-
-    public static OptionalInt findCircuitConfiguration(
-        IPatternDetails patternDetails,
-        CircuitConfigExtractor circuitConfigExtractor
-    ) {
         Objects.requireNonNull(patternDetails, "patternDetails");
-        Objects.requireNonNull(circuitConfigExtractor, "circuitConfigExtractor");
         for (IInput input : getCircuitSearchInputs(patternDetails)) {
             for (GenericStack possibleInput : input.possibleInputs()) {
-                OptionalInt configuration = circuitConfigExtractor.getCircuitConfiguration(possibleInput.what());
+                OptionalInt configuration = Util.getCircuitConfiguration(possibleInput.what());
                 if (configuration.isPresent()) {
                     return configuration;
                 }
@@ -159,14 +143,13 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         return OptionalInt.empty();
     }
 
-    public static KeyCounter[] filterInputHolder(KeyCounter[] inputHolder, CircuitMatcher circuitMatcher) {
+    public static KeyCounter[] filterInputHolder(KeyCounter[] inputHolder) {
         Objects.requireNonNull(inputHolder, "inputHolder");
-        Objects.requireNonNull(circuitMatcher, "circuitMatcher");
         KeyCounter[] filtered = new KeyCounter[inputHolder.length];
         for (int i = 0; i < inputHolder.length; i++) {
             filtered[i] = new KeyCounter();
             for (var input : inputHolder[i]) {
-                if (!circuitMatcher.isCircuit(input.getKey())) {
+                if (!Matcher.Circuit.test(input.getKey())) {
                     filtered[i].add(input.getKey(), input.getLongValue());
                 }
             }
@@ -179,19 +162,9 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         IGhostSlotConfigurable ghostTarget,
         int circuitConfiguration
     ) {
-        return wrapCraftingMachine(machine, ghostTarget, circuitConfiguration, GREGTECH_CIRCUIT_MATCHER);
-    }
-
-    public static ICraftingMachine wrapCraftingMachine(
-        ICraftingMachine machine,
-        IGhostSlotConfigurable ghostTarget,
-        int circuitConfiguration,
-        CircuitMatcher circuitMatcher
-    ) {
         Objects.requireNonNull(machine, "machine");
         Objects.requireNonNull(ghostTarget, "ghostTarget");
-        Objects.requireNonNull(circuitMatcher, "circuitMatcher");
-        return new CircuitConfiguredCraftingMachine(machine, ghostTarget, circuitConfiguration, circuitMatcher);
+        return new CircuitConfiguredCraftingMachine(machine, ghostTarget, circuitConfiguration);
     }
 
     public static IPatternProviderBatchTarget wrapBatchTarget(
@@ -199,19 +172,9 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         IGhostSlotConfigurable ghostTarget,
         int circuitConfiguration
     ) {
-        return wrapBatchTarget(batchTarget, ghostTarget, circuitConfiguration, GREGTECH_CIRCUIT_MATCHER);
-    }
-
-    public static IPatternProviderBatchTarget wrapBatchTarget(
-        IPatternProviderBatchTarget batchTarget,
-        IGhostSlotConfigurable ghostTarget,
-        int circuitConfiguration,
-        CircuitMatcher circuitMatcher
-    ) {
         Objects.requireNonNull(batchTarget, "batchTarget");
         Objects.requireNonNull(ghostTarget, "ghostTarget");
-        Objects.requireNonNull(circuitMatcher, "circuitMatcher");
-        return new CircuitConfiguredBatchTarget(batchTarget, ghostTarget, circuitConfiguration, circuitMatcher);
+        return new CircuitConfiguredBatchTarget(batchTarget, ghostTarget, circuitConfiguration);
     }
 
     public static PatternProviderTarget wrapExternalTarget(
@@ -224,10 +187,15 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         return new CircuitConfiguredExternalTarget(target, ghostTarget, circuitConfiguration);
     }
 
+    /**
+     * Locates the ghost-circuit-configurable target behind a crafting-machine or batch-target role. AE2 no longer
+     * forces {@code ICraftingMachine} to implement {@code IPatternProviderBatchTarget}, so callers may hold either
+     * role (or the tile entity alone) for the same machine; only {@code instanceof} checks are performed here.
+     */
     @Nullable
     public static IGhostSlotConfigurable findGhostCircuitTarget(
         @Nullable TileEntity tileEntity,
-        @Nullable ICraftingMachine machine
+        @Nullable Object machine
     ) {
         if (machine instanceof IGhostSlotConfigurable configurable && configurable.hasGhostCircuitInventory()) {
             return configurable;
@@ -238,24 +206,6 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
             return configurable;
         }
         return null;
-    }
-
-    private static boolean isGregTechIntegratedCircuit(AEKey key) {
-        if (!(key instanceof AEItemKey itemKey)) {
-            return false;
-        }
-        return IntCircuitIngredient.isIntegratedCircuit(itemKey.toStack());
-    }
-
-    private static OptionalInt getGregTechCircuitConfiguration(AEKey key) {
-        if (!(key instanceof AEItemKey itemKey)) {
-            return OptionalInt.empty();
-        }
-        ItemStack stack = itemKey.toStack();
-        if (!IntCircuitIngredient.isIntegratedCircuit(stack)) {
-            return OptionalInt.empty();
-        }
-        return OptionalInt.of(IntCircuitIngredient.getCircuitConfiguration(stack));
     }
 
     @Override
@@ -283,7 +233,7 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         Objects.requireNonNull(inputHolder, "inputHolder");
         Objects.requireNonNull(inputSink, "inputSink");
         this.delegate.pushInputsToExternalInventory(toOriginalInputHolder(inputHolder), (key, amount) -> {
-            if (!this.circuitMatcher.isCircuit(key)) {
+            if (!Matcher.Circuit.test(key)) {
                 inputSink.pushInput(key, amount);
             }
         });
@@ -297,13 +247,12 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
     @Override
     public boolean equals(Object obj) {
         return obj instanceof GregTechCircuitPatternDetails other
-            && this.delegate.equals(other.delegate)
-            && this.circuitMatcher.equals(other.circuitMatcher);
+            && this.delegate.equals(other.delegate);
     }
 
     @Override
     public int hashCode() {
-        return 31 * this.delegate.hashCode() + this.circuitMatcher.hashCode();
+        return 31 * this.delegate.hashCode();
     }
 
     private KeyCounter[] toOriginalInputHolder(KeyCounter[] inputHolder) {
@@ -323,7 +272,7 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         boolean[] hasRealInputSlot = new boolean[this.originalInputs.length];
         for (int filteredSlot = 0; filteredSlot < inputHolder.length; filteredSlot++) {
             int originalSlot = this.filteredInputOriginalIndexes[filteredSlot];
-            expanded[originalSlot] = filterInputCounter(inputHolder[filteredSlot], this.circuitMatcher);
+            expanded[originalSlot] = filterInputCounter(inputHolder[filteredSlot]);
             hasRealInputSlot[originalSlot] = true;
         }
         synthesizeCircuitInputs(expanded, hasRealInputSlot, getInputPushMultiplier(inputHolder, this.filteredInputs));
@@ -334,8 +283,8 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         KeyCounter[] result = createEmptyInputHolder(inputs.length);
         boolean[] hasRealInputSlot = new boolean[inputs.length];
         for (int slot = 0; slot < inputs.length; slot++) {
-            result[slot] = filterInputCounter(inputHolder[slot], this.circuitMatcher);
-            hasRealInputSlot[slot] = hasNonCircuitInput(inputs[slot], this.circuitMatcher);
+            result[slot] = filterInputCounter(inputHolder[slot]);
+            hasRealInputSlot[slot] = hasNonCircuitInput(inputs[slot]);
         }
         synthesizeCircuitInputs(result, hasRealInputSlot, getInputPushMultiplier(inputHolder, inputs));
         return result;
@@ -349,10 +298,10 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         return result;
     }
 
-    private static KeyCounter filterInputCounter(KeyCounter inputCounter, CircuitMatcher circuitMatcher) {
+    private static KeyCounter filterInputCounter(KeyCounter inputCounter) {
         KeyCounter filtered = new KeyCounter();
         for (var input : inputCounter) {
-            if (!circuitMatcher.isCircuit(input.getKey())) {
+            if (!Matcher.Circuit.test(input.getKey())) {
                 filtered.add(input.getKey(), input.getLongValue());
             }
         }
@@ -368,7 +317,7 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
             if (hasRealInputSlot[slot]) {
                 continue;
             }
-            GenericStack circuitTemplate = findCircuitTemplate(this.originalInputs[slot], this.circuitMatcher);
+            GenericStack circuitTemplate = findCircuitTemplate(this.originalInputs[slot]);
             long amount = Math.multiplyExact(
                 Math.multiplyExact(circuitTemplate.amount(), this.originalInputs[slot].getMultiplier()),
                 patternPushMultiplier);
@@ -398,35 +347,35 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         return multiplier == Long.MAX_VALUE ? 1 : multiplier;
     }
 
-    private static boolean hasNonCircuitInput(IInput input, CircuitMatcher circuitMatcher) {
+    private static boolean hasNonCircuitInput(IInput input) {
         for (GenericStack possibleInput : input.possibleInputs()) {
-            if (!circuitMatcher.isCircuit(possibleInput.what())) {
+            if (!Matcher.Circuit.test(possibleInput.what())) {
                 return true;
             }
         }
         return false;
     }
 
-    private static GenericStack findCircuitTemplate(IInput input, CircuitMatcher circuitMatcher) {
+    private static GenericStack findCircuitTemplate(IInput input) {
         for (GenericStack possibleInput : input.possibleInputs()) {
-            if (circuitMatcher.isCircuit(possibleInput.what())) {
+            if (Matcher.Circuit.test(possibleInput.what())) {
                 return possibleInput;
             }
         }
         throw new IllegalStateException("A filtered-out input slot did not contain a circuit template.");
     }
 
-    private static InputFilterResult filterInputs(IInput[] inputs, CircuitMatcher circuitMatcher) {
+    private static InputFilterResult filterInputs(IInput[] inputs) {
         List<IInput> result = new ArrayList<>(inputs.length);
         List<Integer> originalIndexes = new ArrayList<>(inputs.length);
         for (int slot = 0; slot < inputs.length; slot++) {
             IInput input = inputs[slot];
             GenericStack[] possibleInputs = input.possibleInputs();
             GenericStack[] filteredPossibleInputs = Arrays.stream(possibleInputs)
-                .filter(possibleInput -> !circuitMatcher.isCircuit(possibleInput.what()))
+                .filter(possibleInput -> !Matcher.Circuit.test(possibleInput.what()))
                 .toArray(GenericStack[]::new);
             if (filteredPossibleInputs.length > 0) {
-                result.add(new FilteredInput(input, circuitMatcher, filteredPossibleInputs));
+                result.add(new FilteredInput(input, filteredPossibleInputs));
                 originalIndexes.add(slot);
             }
         }
@@ -435,36 +384,6 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
             indexes[i] = originalIndexes.get(i);
         }
         return new InputFilterResult(result.toArray(IInput[]::new), indexes);
-    }
-
-    /**
-     * Identifies AE keys that represent GregTech integrated circuits.
-     */
-    public interface CircuitMatcher {
-        boolean isCircuit(AEKey key);
-    }
-
-    /**
-     * Extracts the configured circuit number from AE keys that represent GregTech integrated circuits.
-     */
-    public interface CircuitConfigExtractor {
-        OptionalInt getCircuitConfiguration(AEKey key);
-    }
-
-    private record GregTechCircuitMatcher() implements CircuitMatcher {
-
-        @Override
-        public boolean isCircuit(AEKey key) {
-            return isGregTechIntegratedCircuit(key);
-        }
-    }
-
-    private record GregTechCircuitConfigExtractor() implements CircuitConfigExtractor {
-
-        @Override
-        public OptionalInt getCircuitConfiguration(AEKey key) {
-            return getGregTechCircuitConfiguration(key);
-        }
     }
 
     private record InputFilterResult(IInput[] inputs, int[] originalIndexes) {
@@ -487,13 +406,11 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
 
     private record FilteredInput(
         IInput delegate,
-        CircuitMatcher circuitMatcher,
         GenericStack[] possibleInputs
     ) implements IInput {
 
         private FilteredInput {
             Objects.requireNonNull(delegate, "delegate");
-            Objects.requireNonNull(circuitMatcher, "circuitMatcher");
             possibleInputs = possibleInputs.clone();
         }
 
@@ -509,12 +426,12 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
 
         @Override
         public boolean isValid(AEKey input, World level) {
-            return !this.circuitMatcher.isCircuit(input) && this.delegate.isValid(input, level);
+            return !Matcher.Circuit.test(input) && this.delegate.isValid(input, level);
         }
 
         @Override
         public @Nullable AEKey getRemainingKey(AEKey template) {
-            if (this.circuitMatcher.isCircuit(template)) {
+            if (Matcher.Circuit.test(template)) {
                 return null;
             }
             return this.delegate.getRemainingKey(template);
@@ -524,14 +441,12 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
     private record CircuitConfiguredCraftingMachine(
         ICraftingMachine delegate,
         IGhostSlotConfigurable ghostTarget,
-        int circuitConfiguration,
-        CircuitMatcher circuitMatcher
-    ) implements ICraftingMachine {
+        int circuitConfiguration
+    ) implements ICraftingMachine, IPatternProviderBatchTarget {
 
         private CircuitConfiguredCraftingMachine {
             Objects.requireNonNull(delegate, "delegate");
             Objects.requireNonNull(ghostTarget, "ghostTarget");
-            Objects.requireNonNull(circuitMatcher, "circuitMatcher");
         }
 
         @Override
@@ -548,8 +463,8 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         ) {
             this.ghostTarget.setGhostCircuitConfig(this.circuitConfiguration);
             return this.delegate.pushPattern(
-                filterIntegratedCircuits(patternDetails, this.circuitMatcher),
-                filterInputHolder(inputs, this.circuitMatcher),
+                filterIntegratedCircuits(patternDetails),
+                filterInputHolder(inputs),
                 multiplier,
                 ejectionDirection);
         }
@@ -566,25 +481,26 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
             int maxMultiplier,
             EnumFacing ejectionDirection
         ) {
+            if (!(this.delegate instanceof IPatternProviderBatchTarget batchTarget)) {
+                return 0;
+            }
             return wrapBatchTarget(
-                this.delegate,
+                batchTarget,
                 this.ghostTarget,
-                this.circuitConfiguration,
-                this.circuitMatcher).getMaxPatternPushMultiplier(patternDetails, inputs, maxMultiplier, ejectionDirection);
+                this.circuitConfiguration
+            ).getMaxPatternPushMultiplier(patternDetails, inputs, maxMultiplier, ejectionDirection);
         }
     }
 
     private record CircuitConfiguredBatchTarget(
         IPatternProviderBatchTarget delegate,
         IGhostSlotConfigurable ghostTarget,
-        int circuitConfiguration,
-        CircuitMatcher circuitMatcher
+        int circuitConfiguration
     ) implements IPatternProviderBatchTarget {
 
         private CircuitConfiguredBatchTarget {
             Objects.requireNonNull(delegate, "delegate");
             Objects.requireNonNull(ghostTarget, "ghostTarget");
-            Objects.requireNonNull(circuitMatcher, "circuitMatcher");
         }
 
         @Override
@@ -596,8 +512,8 @@ public final class GregTechCircuitPatternDetails implements IPatternDetails {
         ) {
             this.ghostTarget.setGhostCircuitConfig(this.circuitConfiguration);
             return this.delegate.getMaxPatternPushMultiplier(
-                filterIntegratedCircuits(patternDetails, this.circuitMatcher),
-                filterInputHolder(inputs, this.circuitMatcher),
+                filterIntegratedCircuits(patternDetails),
+                filterInputHolder(inputs),
                 maxMultiplier,
                 ejectionDirection);
         }

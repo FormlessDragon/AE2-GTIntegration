@@ -2,7 +2,7 @@ apply from: 'gradle/scripts/helpers.gradle'
 
 repositories {
     flatDir {
-        dirs('lib') // /lib
+        dirs('lib', 'lib/local') // /lib
     }
     maven {
         name = 'CleanroomMC'
@@ -60,7 +60,7 @@ dependencies {
     }
     compileOnly("curse.maven:mouse-tweaks-unofficial-461660:5876158")
 
-    modImplementation("mezz:jei:4.31.2")
+    modImplementation("mezz:jei:4.35.1")
     modImplementation("codechicken:CodeChickenLib:3.3.5")
     modImplementation("curse.maven:gregtech-ce-unofficial-557242:5519022")
 

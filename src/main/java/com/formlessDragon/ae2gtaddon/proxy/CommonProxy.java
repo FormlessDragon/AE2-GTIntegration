@@ -4,7 +4,7 @@ import ae2.api.upgrades.Upgrades;
 import ae2.core.definitions.AEBlocks;
 import ae2.core.definitions.AEParts;
 import ae2.core.localization.GuiText;
-import com.formlessDragon.ae2gtaddon.Init.Items;
+import com.formlessDragon.ae2gtaddon.init.Items;
 
 public class CommonProxy implements IProxy {
 

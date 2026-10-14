@@ -1,0 +1,79 @@
+package com.formlessDragon.ae2gtaddon.init;
+
+import ae2.api.parts.IPart;
+import ae2.api.parts.IPartItem;
+import ae2.api.parts.PartModels;
+import ae2.api.upgrades.Upgrades;
+import ae2.core.definitions.ItemDefinition;
+import ae2.items.parts.PartItem;
+import ae2.items.parts.PartModelsHelper;
+import com.formlessDragon.ae2gtaddon.Tags;
+import com.formlessDragon.ae2gtaddon.ids.ItemIds;
+import com.formlessDragon.ae2gtaddon.parts.ExtendedEncodingTermPart;
+import net.minecraft.client.renderer.block.model.ModelResourceLocation;
+import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.client.event.ModelRegistryEvent;
+import net.minecraftforge.client.model.ModelLoader;
+import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.function.Function;
+
+@Mod.EventBusSubscriber(modid = Tags.MOD_ID)
+public final class Items {
+
+    public static final CreativeTabs TABS = new CreativeTabs(Tags.MOD_ID) {
+
+        @Override
+        @NotNull
+        public ItemStack createIcon() {
+            return CIRCUIT_CARD.stack(1);
+        }
+    };
+
+    public static final ItemDefinition<Item> CIRCUIT_CARD = new ItemDefinition<>(
+            ItemIds.CIRCUIT_CARD, Upgrades.createUpgradeCardItem(), TABS);
+    public static final ItemDefinition<PartItem<ExtendedEncodingTermPart>> EXTENDED_ENCODING_TERM = createPart(
+            ItemIds.EXTENDED_ENCODING_TERM, ExtendedEncodingTermPart.class, ExtendedEncodingTermPart::new);
+
+    private static final ItemDefinition<?>[] ITEMS = {
+        CIRCUIT_CARD,
+        EXTENDED_ENCODING_TERM
+    };
+
+    private Items() {
+
+    }
+
+    @SubscribeEvent
+    public static void register(RegistryEvent.Register<Item> event) {
+        for(ItemDefinition<?> definition : ITEMS) {
+            event.getRegistry().register(definition.item());
+        }
+    }
+
+    @SideOnly(Side.CLIENT)
+    @SubscribeEvent
+    public static void registerModels(ModelRegistryEvent event) {
+        for(ItemDefinition<?> definition : ITEMS) {
+            Item item = definition.item();
+            if(item != null) {
+                ModelLoader.setCustomModelResourceLocation(item, 0, new ModelResourceLocation(definition.id(), "inventory"));
+            }
+        }
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private static <T extends IPart> ItemDefinition<PartItem<T>> createPart(ResourceLocation id, Class<T> partClass,
+                                                                            Function<IPartItem<T>, T> factory) {
+        PartModels.registerModels(PartModelsHelper.createModels(partClass));
+        return new ItemDefinition<>(id, new PartItem<>(partClass, factory), TABS);
+    }
+}
