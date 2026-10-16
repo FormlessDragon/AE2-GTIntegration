@@ -44,7 +44,7 @@ public final class HeiPatternItemAutoNamer {
                 continue;
             }
 
-            int index = nextIndexByGroup.merge(group, 0, Integer::sum);
+            int index = nextIndexByGroup.merge(group, 0, (pre, _) -> pre + 1);
             String name = buildName(ItemKeyRenameStrategy.INSTANCE.baseName(stack.what()), index, AEGTAddonConfig.autoNamingKeepsItemName);
             AEKey replacement = name == null ? null : ItemKeyRenameStrategy.INSTANCE.rename(stack.what(), name);
             renamed.add(replacement == null ? stack : new GenericStack(replacement, stack.amount()));
