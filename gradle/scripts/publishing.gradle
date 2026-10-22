@@ -32,11 +32,22 @@ setDefaultProperty('jitpack_group', false, '')
 setDefaultProperty('jitpack_artifact_id', false, '')
 setDefaultProperty('jitpack_version', false, '')
 
+def publishMainJarTask = propertyBool('enable_shadow') ? 'reobfShadowJar' : 'reobfJar'
+
 def configureMavenJavaPublication = { MavenPublication publication, String groupId, String artifactId, String publicationVersion ->
     def scmUrl = propertyString('maven_scm_url')
     def scmConnectionUrl = scmUrl.endsWith('.git') ? scmUrl : "${scmUrl}.git"
 
     publication.from components.java
+    // MDG replaces the Java component's development variant with the remapped jar.
+    // Publish both explicitly, and exclude the Shadow plugin's optional variants.
+    publication.setArtifacts([tasks.named(publishMainJarTask), tasks.named('jar')])
+    if (propertyBool('generate_sources_jar')) {
+        publication.artifact(tasks.named('sourcesJar'))
+    }
+    if (propertyBool('generate_javadocs_jar')) {
+        publication.artifact(tasks.named('javadocJar'))
+    }
     publication.setGroupId(groupId)
     publication.setArtifactId(artifactId)
     publication.setVersion(publicationVersion)

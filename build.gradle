@@ -167,6 +167,7 @@ if (useMixins) {
 // Check gradle/scripts/dependencies.gradle for that.
 dependencies {
     if (useMixins) {
+        annotationProcessor 'com.cleanroommc:mixinextras-common:0.5.5'
         annotationProcessor 'com.cleanroommc:cleanmix:0.7.2'
     }
     if (propertyBool('enable_junit_testing')) {
