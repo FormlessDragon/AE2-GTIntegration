@@ -54,7 +54,8 @@ repositories {
 
 dependencies {
     compileOnly 'org.jetbrains:annotations:26.0.2'
-    compileOnly "com.cleanroommc:sponge-mixin:0.20.13+mixin.0.8.7"
+    compileOnly "com.cleanroommc:cleanmix:0.7.4"
+    compileOnly "com.cleanroommc:mixinextras-common:0.5.5"
     if (propertyBool('enable_lwjglx')) {
         compileOnly "com.cleanroommc:lwjglx:1.0.0"
     }
