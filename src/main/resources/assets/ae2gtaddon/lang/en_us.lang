@@ -1,10 +1,19 @@
 # Item
 item.ae2gtaddon.circuit_card.name=Circuit Card
+item.ae2gtaddon.extended_encoding_terminal.name=ME Extended Pattern Encoding Terminal
 
 # Tooltips
 gui.tooltips.ae2gtaddon.IgnoreCircuitHeiImport=HEI Circuit Import
 gui.tooltips.ae2gtaddon.IgnoreCircuitHeiImportOff=Keep integrated circuits when importing processing patterns.
 gui.tooltips.ae2gtaddon.IgnoreCircuitHeiImportOn=Ignore integrated circuits when importing processing patterns.
+gui.tooltips.ae2gtaddon.AutoNameHeiImport=HEI Auto Naming
+gui.tooltips.ae2gtaddon.AutoNameHeiImportOff=Import processing inputs exactly as HEI provides them.
+gui.tooltips.ae2gtaddon.AutoNameHeiImportOn=Name repeated items as "name #1", "name #2" and keep them in separate slots. Requires HEI input merging to be off.
+gui.ae2gtaddon.MultiIn=Multi-In (32 inputs -> 8 outputs)
+gui.ae2gtaddon.MultiOut=Multi-Out (8 inputs -> 32 outputs)
+gui.ae2gtaddon.ModeSwitchWouldLoseData=Clear the excess input/output slots before changing layout. Your current recipe has been preserved.
+gui.ae2gtaddon.RecipeDoesNotFit=This recipe needs a 32-input / 8-output or 8-input / 32-output layout, with valid processing amounts. Nothing was imported.
+gui.ae2gtaddon.InvalidDraft=The recipe contains invalid amounts or slots outside the current layout. Your draft and pattern have been preserved.
 
 # Others
 itemGroup.ae2gtaddon=AE2-GTIntergration

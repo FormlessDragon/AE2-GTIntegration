@@ -1,44 +1,71 @@
+apply from: 'gradle/scripts/helpers.gradle'
+
 repositories {
-    // Other repositories described by default:
-    // CleanroomMC: https://maven.cleanroommc.com
     flatDir {
-        dirs('lib')
+        dirs('lib', 'lib/local') // /lib
+    }
+    maven {
+        name = 'CleanroomMC'
+        url = 'https://maven.cleanroommc.com'
+        content {
+            includeGroup 'mezz'
+            includeGroup 'codechicken'
+        }
     }
     maven {
         name = 'CurseMaven'
         url = 'https://cursemaven.com'
+        content {
+            includeGroup 'curse.maven'
+        }
     }
     maven {
         name = 'CleanroomCurseMaven'
         url = 'https://curse.cleanroommc.com'
+        content {
+            includeGroup 'curse.maven'
+        }
     }
     maven {
         name = 'Modrinth'
         url = 'https://api.modrinth.com/maven'
+        content {
+            includeGroup 'maven.modrinth'
+        }
     }
-    mavenCentral()
     maven {
         name = 'chickenbones'
         url = 'https://chickenbones.net/maven/'
     }
     maven {
-        name 'BlameJared Maven'
-        url 'https://maven.blamejared.com'
+        name = 'BlameJared'
+        url = 'https://maven.blamejared.com'
     }
+    maven {
+        name = 'jitpack'
+        url = 'https://jitpack.io'
+        content {
+            includeGroup 'com.github.FormlessDragon'
+        }
+    }
+    mavenCentral()
     mavenLocal() // Must be last for caching to work
 }
 
 dependencies {
-    compileOnly "com.cleanroommc:sponge-mixin:0.20.13+mixin.0.8.7"
-    if (enable_lwjglx.toBoolean()) {
+    compileOnly 'org.jetbrains:annotations:26.0.2'
+    compileOnly "com.cleanroommc:cleanmix:0.7.4"
+    compileOnly "com.cleanroommc:mixinextras-common:0.5.5"
+    if (propertyBool('enable_lwjglx')) {
         compileOnly "com.cleanroommc:lwjglx:1.0.0"
     }
-    modImplementation("mezz:jei:4.31.2")
+    compileOnly("curse.maven:mouse-tweaks-unofficial-461660:5876158")
 
+    modImplementation("mezz:jei:4.35.1")
     modImplementation("codechicken:CodeChickenLib:3.3.5")
     modImplementation("curse.maven:gregtech-ce-unofficial-557242:5519022")
-    compileOnly("io.github.formlessdragon:AppliedEnergistics2-Supergiant:${ae2_version}:dev")
-    modRuntimeOnly("io.github.formlessdragon:AppliedEnergistics2-Supergiant:${ae2_version}:dev")
 
-    modRuntimeOnly(":appcompat:0.0.0+6e7bceb:dev")
+    modImplementation("com.github.FormlessDragon:Applied-Energistics-2-Supergiant:v${propertyString('ae2_version')}:dev")
+
+    //modRuntimeOnly(":appcompat:0.0.0+6e7bceb:dev")
 }

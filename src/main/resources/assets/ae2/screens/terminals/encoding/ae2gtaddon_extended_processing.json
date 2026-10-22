@@ -1,0 +1,146 @@
+{
+	"$schema": "../../schema.json",
+	"slots": {
+		"PROCESSING_INPUTS": {
+			"left": 21,
+			"bottom": 158
+		},
+		"PROCESSING_OUTPUTS": {
+			"left": 21,
+			"bottom": 158,
+			"grid": "VERTICAL"
+		}
+	},
+	"widgets": {
+		"multiInprocessingPatternModeScrollbar": {
+			"left": 11,
+			"bottom": 165,
+			"height": 70
+		},
+		"multiInprocessingCycleOutput": {
+			"left": 106,
+			"bottom": 166
+		},
+		"multiInprocessingClearSecondaryOutputs": {
+			"left": 106,
+			"bottom": 156
+		},
+		"multiInprocessingClearPattern": {
+			"left": 93,
+			"bottom": 166
+		},
+		"multiInprocessingIgnoreCircuit": {
+			"left": 93,
+			"bottom": 156
+		},
+		"multiInprocessingMergeHeiInputs": {
+			"left": 93,
+			"bottom": 146
+		},
+		"multiInprocessingAutoNaming": {
+			"left": 106,
+			"bottom": 146
+		},
+		"multiInprocessingAmountButton0": {
+			"left": 93,
+			"bottom": 122,
+			"width": 8,
+			"height": 8
+		},
+		"multiInprocessingAmountButton1": {
+			"left": 106,
+			"bottom": 122,
+			"width": 8,
+			"height": 8
+		},
+		"multiInprocessingAmountButton2": {
+			"left": 93,
+			"bottom": 112,
+			"width": 8,
+			"height": 8
+		},
+		"multiInprocessingAmountButton3": {
+			"left": 106,
+			"bottom": 112,
+			"width": 8,
+			"height": 8
+		},
+		"multiInprocessingAmountButton4": {
+			"left": 93,
+			"bottom": 102,
+			"width": 8,
+			"height": 8
+		},
+		"multiInprocessingAmountButton5": {
+			"left": 106,
+			"bottom": 102,
+			"width": 8,
+			"height": 8
+		},
+		"multiOutprocessingPatternModeScrollbar": {
+			"left": 11,
+			"bottom": 165,
+			"height": 70
+		},
+		"multiOutprocessingCycleOutput": {
+			"left": 52,
+			"bottom": 166
+		},
+		"multiOutprocessingClearSecondaryOutputs": {
+			"left": 52,
+			"bottom": 156
+		},
+		"multiOutprocessingClearPattern": {
+			"left": 39,
+			"bottom": 166
+		},
+		"multiOutprocessingIgnoreCircuit": {
+			"left": 39,
+			"bottom": 156
+		},
+		"multiOutprocessingMergeHeiInputs": {
+			"left": 39,
+			"bottom": 146
+		},
+		"multiOutprocessingAutoNaming": {
+			"left": 52,
+			"bottom": 146
+		},
+		"multiOutprocessingAmountButton0": {
+			"left": 39,
+			"bottom": 122,
+			"width": 8,
+			"height": 8
+		},
+		"multiOutprocessingAmountButton1": {
+			"left": 52,
+			"bottom": 122,
+			"width": 8,
+			"height": 8
+		},
+		"multiOutprocessingAmountButton2": {
+			"left": 39,
+			"bottom": 112,
+			"width": 8,
+			"height": 8
+		},
+		"multiOutprocessingAmountButton3": {
+			"left": 52,
+			"bottom": 112,
+			"width": 8,
+			"height": 8
+		},
+		"multiOutprocessingAmountButton4": {
+			"left": 39,
+			"bottom": 102,
+			"width": 8,
+			"height": 8
+		},
+		"multiOutprocessingAmountButton5": {
+			"left": 52,
+			"bottom": 102,
+			"width": 8,
+			"height": 8
+		}
+	}
+}

@@ -1,6 +1,6 @@
 package com.formlessDragon.ae2gtaddon.integration.hei;
 
-import ae2.container.me.items.ContainerPatternEncodingTerm;
+import ae2.container.me.patternencode.ContainerPatternEncodingTerm;
 
 /**
  * Exposes the owning pattern encoding terminal container from AE2's encoding mode panels.

@@ -1,10 +1,19 @@
 # Item
 item.ae2gtaddon.circuit_card.name=电路卡
+item.ae2gtaddon.extended_encoding_terminal.name=ME 扩展样板编码终端
 
 # Tooltips
 gui.tooltips.ae2gtaddon.IgnoreCircuitHeiImport=HEI 电路导入
 gui.tooltips.ae2gtaddon.IgnoreCircuitHeiImportOff=导入处理样板时保留集成电路。
 gui.tooltips.ae2gtaddon.IgnoreCircuitHeiImportOn=导入处理样板时忽略集成电路。
+gui.tooltips.ae2gtaddon.AutoNameHeiImport=HEI 自动命名
+gui.tooltips.ae2gtaddon.AutoNameHeiImportOff=导入处理样板时按 HEI 提供的内容写入，不重命名。
+gui.tooltips.ae2gtaddon.AutoNameHeiImportOn=导入处理样板时把重复物品命名为“名称 #1”“名称 #2”，并保留在独立槽位中；需要关闭 HEI 输入合并。
+gui.ae2gtaddon.MultiIn=多输入（32 输入 -> 8 输出）
+gui.ae2gtaddon.MultiOut=多输出（8 输入 -> 32 输出）
+gui.ae2gtaddon.ModeSwitchWouldLoseData=请先清空超出目标布局容量的输入或输出槽。当前配方已保留。
+gui.ae2gtaddon.RecipeDoesNotFit=配方必须符合 32 输入 / 8 输出或 8 输入 / 32 输出容量，且数量合法。本次未导入任何内容。
+gui.ae2gtaddon.InvalidDraft=配方数量不合法或存在超出当前布局的槽位。草稿和样板均已保留。
 
 # Others
 itemGroup.ae2gtaddon=AE2-GT集成

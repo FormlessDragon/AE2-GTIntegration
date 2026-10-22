@@ -13,7 +13,7 @@ public interface ProcessingPatternCircuitImportMode {
      *
      * @return {@code true} when integrated circuits should not be written into processing input slots.
      */
-    boolean ae2gtaddon$shouldIgnoreCircuitInHeiProcessingPattern();
+    boolean ae2gtaddon$ignoreCircuit();
 
     /**
      * Updates whether HEI processing pattern imports should skip GregTech integrated circuits.
@@ -21,5 +21,5 @@ public interface ProcessingPatternCircuitImportMode {
      * @param ignoreCircuit {@code true} to skip integrated circuits, {@code false} to keep the original HEI import
      *                      behavior.
      */
-    void ae2gtaddon$setIgnoreCircuitInHeiProcessingPattern(boolean ignoreCircuit);
+    void ae2gtaddon$setIgnoreCircuit(boolean ignoreCircuit);
 }
