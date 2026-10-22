@@ -113,14 +113,124 @@ def namedRuntimeTestJars = {
     }
 }
 
-def cleanRemappedRuntimeTestMods = tasks.register(
-    'runtimeTestCleanRemappedMods',
-    Delete
-) {
-    delete remappedRuntimeTestModsDir
+def namedRuntimeTestRemapTasks = []
+def cleanRemappedRuntimeTestMods = tasks.register('runtimeTestCleanRemappedMods') {
+    def outputDir = remappedRuntimeTestModsDir.get().asFile
+    def expectedNames = providers.provider {
+        namedRuntimeTestJars().collect { it.name } as Set
+    }
+    inputs.property('expectedNames', expectedNames.map { it.sort().join(',') })
+    doLast {
+        if (!outputDir.isDirectory()) {
+            return
+        }
+        def keep = expectedNames.get()
+        outputDir.listFiles()?.each { stale ->
+            if (!keep.contains(stale.name)) {
+                stale.delete()
+            }
+        }
+    }
 }
 
-def namedRuntimeTestRemapTasks = []
+def rewriteAccessTransformer = { File mappingFile, String text ->
+    def fields = [:]
+    def methods = [:]
+    mappingFile.eachLine('UTF-8') { String line ->
+        if (line.startsWith('FD: ')) {
+            def parts = line.substring(4).split(' ')
+            if (parts.length >= 2) {
+                fields[parts[0]] = parts[1]
+            }
+        } else if (line.startsWith('MD: ')) {
+            def parts = line.substring(4).split(' ')
+            if (parts.length >= 4) {
+                methods[parts[0] + ' ' + parts[1]] = parts[2] + ' ' + parts[3]
+            }
+        }
+    }
+    def out = new StringBuilder()
+    text.split('\r?\n', -1).each { String raw ->
+        def matcher = raw =~ /^(\s*\S+\s+)(\S+)(\s+)([^#]*?)(\s*#.*)?$/
+        if (!matcher.matches()) {
+            out.append(raw).append('\n')
+            return
+        }
+        def prefix = matcher.group(1)
+        def dotted = matcher.group(2)
+        def gap = matcher.group(3)
+        def member = matcher.group(4)?.trim() ?: ''
+        def comment = matcher.group(5) ?: ''
+        def owner = dotted.replace('.', '/')
+        def renamed = member
+        def signature = member =~ /^([A-Za-z0-9_$]+)(\(.*)$/
+        if (signature.matches()) {
+            def key = owner + '/' + signature.group(1) + ' ' + signature.group(2)
+            if (methods.containsKey(key)) {
+                renamed = methods[key].split(' ')[0].tokenize('/').last() +
+                    signature.group(2)
+            }
+        } else if (member && !member.contains('(')) {
+            def key = owner + '/' + member
+            if (fields.containsKey(key)) {
+                renamed = fields[key].tokenize('/').last()
+            }
+        }
+        out.append(prefix).append(dotted).append(gap).append(renamed)
+            .append(comment).append('\n')
+    }
+    out.toString()
+}
+def rewriteAccessTransformersInJar = { File mappingFile, File jar ->
+    def entries = [:]
+    def order = []
+    def source = new java.util.zip.ZipFile(jar)
+    try {
+        source.entries().each { entry ->
+            if (entry.directory) {
+                return
+            }
+            order << entry.name
+            if (entry.name.startsWith('META-INF/') &&
+                    entry.name.endsWith('_at.cfg')) {
+                entries[entry.name] = rewriteAccessTransformer(
+                    mappingFile,
+                    new String(
+                        source.getInputStream(entry)
+                            .withCloseable { it.getBytes() },
+                        'UTF-8'
+                    )
+                )
+            } else {
+                entries[entry.name] = source.getInputStream(entry)
+                    .withCloseable { it.getBytes() }
+            }
+        }
+    } finally {
+        source.close()
+    }
+    if (entries.keySet().every { !it.startsWith('META-INF/') ||
+            !it.endsWith('_at.cfg') }) {
+        return false
+    }
+    def target = new java.util.zip.ZipOutputStream(
+        new java.io.FileOutputStream(jar)
+    )
+    try {
+        order.each { name ->
+            def bytes = entries[name]
+            def entry = new java.util.zip.ZipEntry(name)
+            entry.time = 0L
+            target.putNextEntry(entry)
+            target.write(bytes as byte[])
+            target.closeEntry()
+        }
+    } finally {
+        target.close()
+    }
+    return true
+}
+
 afterEvaluate {
     def remapJarType = tasks.getByName('reobfJar').class
     namedRuntimeTestJars().each { jar ->
@@ -134,6 +244,12 @@ afterEvaluate {
             task.destinationDirectory.set(remappedRuntimeTestModsDir)
             task.libraries.from(sourceSets.main.compileClasspath)
             obfuscation.configureNamedToSrgOperation(task.remapOperation)
+            task.doLast {
+                rewriteAccessTransformersInJar(
+                    obfuscation.namedToSrgMappings.get().asFile,
+                    task.archiveFile.get().asFile
+                )
+            }
         }
         namedRuntimeTestRemapTasks << remapTask
     }
