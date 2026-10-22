@@ -1,7 +1,6 @@
 package com.formlessDragon.ae2gtaddon.integration.hei;
 
 import ae2.api.client.PatternImportPriorityContext;
-import ae2.api.crafting.PatternDetailsHelper;
 import ae2.api.stacks.AEKey;
 import ae2.api.stacks.GenericStack;
 import ae2.client.patternimport.PatternImportPrioritySelector;
@@ -136,8 +135,7 @@ public class ExtendedPatternEncodingRecipeTransferHandler
     }
 
     private static void validateAmounts(List<GenericStack> stacks) {
-        if (stacks.isEmpty() || stacks.stream().anyMatch(stack -> stack.amount() <= 0
-                || stack.amount() > PatternDetailsHelper.MAX_PROCESSING_PATTERN_AMOUNT)) {
+        if (stacks.isEmpty() || stacks.stream().anyMatch(stack -> stack.amount() <= 0)) {
             throw new IllegalArgumentException("Recipe contains empty or oversized ingredients");
         }
     }

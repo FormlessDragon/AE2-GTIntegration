@@ -2406,6 +2406,3 @@ public class ContainerExtendedEncodingTerm extends ContainerMEStorage
     private record HeiProcessingRecipeSnapshot(String recipeTypeUid, List<List<AEKey>> inputCandidatesBySlot) {
     }
 }
-
-
-

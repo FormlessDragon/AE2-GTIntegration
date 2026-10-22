@@ -1,6 +1,5 @@
 package com.formlessDragon.ae2gtaddon.parts;
 
-import ae2.api.crafting.PatternDetailsHelper;
 import ae2.api.stacks.GenericStack;
 import ae2.core.AELog;
 import ae2.util.ConfigInventory;
@@ -90,8 +89,7 @@ public final class ExtendedEncodingDraft {
             throw new IllegalArgumentException("Processing draft exceeds layout capacity");
         }
         for (GenericStack stack : stacks) {
-            if (stack != null && (stack.amount() <= 0
-                    || stack.amount() > PatternDetailsHelper.MAX_PROCESSING_PATTERN_AMOUNT)) {
+            if (stack != null && (stack.amount() <= 0)) {
                 throw new IllegalArgumentException("Processing ingredient amount is out of range");
             }
         }
