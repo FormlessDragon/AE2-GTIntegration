@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 // You may write any Gradle buildscript component in this file.
 // This file is automatically applied after build.gradle + dependencies.gradle.
 
@@ -46,12 +48,10 @@ def runtimeTestNamedModJars = configurations.maybeCreate('runtimeTestNamedModJar
 runtimeTestNamedModJars.canBeConsumed = false
 runtimeTestNamedModJars.canBeResolved = true
 
-def namedRuntimeTestMods = []
 runtimeTestProductionMods.allDependencies
     .withType(ExternalModuleDependency)
     .each { dependency ->
-        def devArtifact = dependency.artifacts.find { it.classifier == 'dev' }
-        if (devArtifact == null) {
+        if (!dependency.artifacts.any { it.classifier == 'dev' }) {
             return
         }
         dependencies.add(
@@ -62,13 +62,10 @@ runtimeTestProductionMods.allDependencies
         }
         dependencies.add(
             runtimeTestNamedModJars.name,
-            "${dependency.group}:${dependency.name}:${dependency.version}:" +
-                "${devArtifact.classifier}@${devArtifact.extension}"
+            "${dependency.group}:${dependency.name}:${dependency.version}:dev@jar"
         ) {
             transitive = false
         }
-        namedRuntimeTestMods << "${dependency.group}:${dependency.name}:" +
-            "${dependency.version}"
     }
 
 def namedRuntimeTestJarNames = providers.provider {
@@ -76,6 +73,82 @@ def namedRuntimeTestJarNames = providers.provider {
 }
 def isNamedRuntimeTestJar = { String fileName ->
     namedRuntimeTestJarNames.get().contains(fileName)
+}
+
+def remappedRuntimeTestModsDir =
+    layout.buildDirectory.dir('runtime-test/remapped-mods')
+def isNamedMinecraftJar = { File jar ->
+    def srgNames = new HashSet<String>()
+    def mcRefs = new HashSet<String>()
+    def zf = new ZipFile(jar)
+    try {
+        zf.entries().each { entry ->
+            if (!entry.name.endsWith('.class')) {
+                return
+            }
+            def text = new String(
+                zf.getInputStream(entry).withCloseable { it.getBytes() },
+                'ISO-8859-1'
+            )
+            def srgMatcher = text =~ /(?:func|field)_\d+_[A-Za-z0-9_]+/
+            srgMatcher.each { srgNames << it }
+            def mcMatcher = text =~ /net\/minecraft\/[a-zA-Z0-9_\/]+/
+            mcMatcher.each { mcRefs << it }
+        }
+    } finally {
+        zf.close()
+    }
+    if (mcRefs.isEmpty()) {
+        return false
+    }
+    return srgNames.size() * 2 < mcRefs.size()
+}
+def namedRuntimeTestJars = {
+    def substituted = namedRuntimeTestJarNames.get()
+    runtimeTestProductionMods.files.findAll {
+        it.name.endsWith('.jar') &&
+            !it.name.endsWith('-sources.jar') &&
+            !substituted.contains(it.name) &&
+            isNamedMinecraftJar(it)
+    }
+}
+
+def cleanRemappedRuntimeTestMods = tasks.register(
+    'runtimeTestCleanRemappedMods',
+    Delete
+) {
+    delete remappedRuntimeTestModsDir
+}
+
+def namedRuntimeTestRemapTasks = []
+afterEvaluate {
+    def remapJarType = tasks.getByName('reobfJar').class
+    namedRuntimeTestJars().each { jar ->
+        def remapTask = tasks.register(
+            'runtimeTestRemap' + jar.name.replaceAll('[^A-Za-z0-9]', '_'),
+            remapJarType
+        ) { task ->
+            task.dependsOn cleanRemappedRuntimeTestMods
+            task.input = layout.file(providers.provider { jar })
+            task.archiveFileName.set(jar.name)
+            task.destinationDirectory.set(remappedRuntimeTestModsDir)
+            task.libraries.from(sourceSets.main.compileClasspath)
+            obfuscation.configureNamedToSrgOperation(task.remapOperation)
+        }
+        namedRuntimeTestRemapTasks << remapTask
+    }
+}
+
+def remapNamedRuntimeTestMods = tasks.register('runtimeTestRemapNamedMods') {
+    dependsOn cleanRemappedRuntimeTestMods
+    dependsOn namedRuntimeTestRemapTasks
+    outputs.dir(remappedRuntimeTestModsDir)
+    doLast {
+        logger.lifecycle(
+            "[RuntimeTest] Remapped ${namedRuntimeTestRemapTasks.size()} named " +
+                'jar(s) to SRG'
+        )
+    }
 }
 def runtimeTestModsDir = providers.gradleProperty('runtimeTestModsDir')
     .map { file(it) }
@@ -90,37 +163,35 @@ def runtimeMcpRemapMarker = layout.buildDirectory.file(
 )
 
 def runtimeMcpRemapTask = tasks.register('runtimeTestRemapMcp') {
+    dependsOn remapNamedRuntimeTestMods
     inputs.files(runtimeTestProductionMods)
     inputs.files(runtimeTestNamedModJars)
     inputs.files(runtimeTestReobfMods)
-    inputs.property('runtimeRemapSchema', 'moddevgradle-runtime-production-variants-v2')
+    inputs.dir(remappedRuntimeTestModsDir)
+    inputs.property('runtimeRemapSchema', 'moddevgradle-runtime-production-variants-v3')
     outputs.file(runtimeMcpRemapMarker)
     doLast {
+        def dropped = namedRuntimeTestJars()
+        def substituted = namedRuntimeTestJarNames.get()
         def files = runtimeTestProductionMods.files.findAll {
             it.name.endsWith('.jar') && !it.name.endsWith('-sources.jar')
-        }.findAll { !isNamedRuntimeTestJar(it.name) }
+        }.findAll { !dropped.any { d -> d.name == it.name } }
+            .findAll { !substituted.contains(it.name) }
         def reobfFiles = runtimeTestReobfMods.files.findAll {
             it.name.endsWith('.jar') && !it.name.endsWith('-sources.jar')
         }
+        def remappedFiles = remappedRuntimeTestModsDir.get().asFile.listFiles()
+            ?.findAll { it.name.endsWith('.jar') } ?: []
         runtimeMcpRemapMarker.get().asFile.with {
             parentFile.mkdirs()
-            text = (files + reobfFiles).collect { it.name }.sort().join('\n') + '\n'
+            text = (files + reobfFiles + remappedFiles)
+                .collect { it.name }.sort().join('\n') + '\n'
         }
         logger.lifecycle(
             "[RuntimeTest] Production variants: ${files.size()}, " +
-                "reobfuscated substitutions: ${reobfFiles.size()}"
+                "reobfuscated substitutions: ${reobfFiles.size()}, " +
+                "remapped: ${remappedFiles.size()}"
         )
-        // Every named artifact is dropped from staging, so each must have
-        // produced a reobfuscated substitute.
-        if (reobfFiles.size() != namedRuntimeTestMods.size()) {
-            throw new GradleException(
-                "[RuntimeTest] ${namedRuntimeTestMods.size()} mod(s) declare a " +
-                    "'dev' classifier (${namedRuntimeTestMods.join(', ')}) but only " +
-                    "${reobfFiles.size()} reobfuscated artifact(s) were resolved. " +
-                    'Publish an artifact without the dev classifier, or drop the ' +
-                    'dependency from the production runtime test.'
-            )
-        }
     }
 }
 
@@ -131,12 +202,17 @@ tasks.register('stageRuntimeTestMods', Sync) {
     from(runtimeTestProductionMods) {
         include '*.jar'
         exclude '*-sources.jar'
-        // Drop the named artifacts replaced by runtimeTestReobfMods.
         exclude { isNamedRuntimeTestJar(it.name) }
+        exclude {
+            it.file.name.endsWith('.jar') && isNamedMinecraftJar(it.file)
+        }
     }
     from(runtimeTestReobfMods) {
         include '*.jar'
         exclude '*-sources.jar'
+    }
+    from(remappedRuntimeTestModsDir) {
+        include '*.jar'
     }
     into(runtimeTestModsDir)
     include '*.jar'
