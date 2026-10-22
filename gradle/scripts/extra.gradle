@@ -28,12 +28,54 @@ def mappingsAttribute = Attribute.of(
     'com.gtnewhorizons.retrofuturagradle.obfuscation',
     String
 )
-runtimeTestProductionMods.attributes {
+def runtimeProductionAttributes = {
     attribute(mappingsAttribute, 'srg')
     attribute(
             Usage.USAGE_ATTRIBUTE,
         objects.named(Usage, 'java-runtime')
     )
+}
+runtimeTestProductionMods.attributes(runtimeProductionAttributes)
+
+def runtimeTestReobfMods = configurations.maybeCreate('runtimeTestReobfMods')
+runtimeTestReobfMods.canBeConsumed = false
+runtimeTestReobfMods.canBeResolved = true
+runtimeTestReobfMods.attributes(runtimeProductionAttributes)
+
+def runtimeTestNamedModJars = configurations.maybeCreate('runtimeTestNamedModJars')
+runtimeTestNamedModJars.canBeConsumed = false
+runtimeTestNamedModJars.canBeResolved = true
+
+def namedRuntimeTestMods = []
+runtimeTestProductionMods.allDependencies
+    .withType(ExternalModuleDependency)
+    .each { dependency ->
+        def devArtifact = dependency.artifacts.find { it.classifier == 'dev' }
+        if (devArtifact == null) {
+            return
+        }
+        dependencies.add(
+            runtimeTestReobfMods.name,
+            "${dependency.group}:${dependency.name}:${dependency.version}"
+        ) {
+            transitive = false
+        }
+        dependencies.add(
+            runtimeTestNamedModJars.name,
+            "${dependency.group}:${dependency.name}:${dependency.version}:" +
+                "${devArtifact.classifier}@${devArtifact.extension}"
+        ) {
+            transitive = false
+        }
+        namedRuntimeTestMods << "${dependency.group}:${dependency.name}:" +
+            "${dependency.version}"
+    }
+
+def namedRuntimeTestJarNames = providers.provider {
+    runtimeTestNamedModJars.files.collect { it.name } as Set
+}
+def isNamedRuntimeTestJar = { String fileName ->
+    namedRuntimeTestJarNames.get().contains(fileName)
 }
 def runtimeTestModsDir = providers.gradleProperty('runtimeTestModsDir')
     .map { file(it) }
@@ -49,19 +91,36 @@ def runtimeMcpRemapMarker = layout.buildDirectory.file(
 
 def runtimeMcpRemapTask = tasks.register('runtimeTestRemapMcp') {
     inputs.files(runtimeTestProductionMods)
-    inputs.property('runtimeRemapSchema', 'moddevgradle-mcp-runtime-classpath-v1')
+    inputs.files(runtimeTestNamedModJars)
+    inputs.files(runtimeTestReobfMods)
+    inputs.property('runtimeRemapSchema', 'moddevgradle-runtime-production-variants-v2')
     outputs.file(runtimeMcpRemapMarker)
     doLast {
         def files = runtimeTestProductionMods.files.findAll {
             it.name.endsWith('.jar') && !it.name.endsWith('-sources.jar')
+        }.findAll { !isNamedRuntimeTestJar(it.name) }
+        def reobfFiles = runtimeTestReobfMods.files.findAll {
+            it.name.endsWith('.jar') && !it.name.endsWith('-sources.jar')
         }
         runtimeMcpRemapMarker.get().asFile.with {
             parentFile.mkdirs()
-            text = files.collect { it.name }.sort().join('\n') + '\n'
+            text = (files + reobfFiles).collect { it.name }.sort().join('\n') + '\n'
         }
         logger.lifecycle(
-            "[RuntimeTest] ModDevGradle supplied ${files.size()} runtime mod variant(s)"
+            "[RuntimeTest] Production variants: ${files.size()}, " +
+                "reobfuscated substitutions: ${reobfFiles.size()}"
         )
+        // Every named artifact is dropped from staging, so each must have
+        // produced a reobfuscated substitute.
+        if (reobfFiles.size() != namedRuntimeTestMods.size()) {
+            throw new GradleException(
+                "[RuntimeTest] ${namedRuntimeTestMods.size()} mod(s) declare a " +
+                    "'dev' classifier (${namedRuntimeTestMods.join(', ')}) but only " +
+                    "${reobfFiles.size()} reobfuscated artifact(s) were resolved. " +
+                    'Publish an artifact without the dev classifier, or drop the ' +
+                    'dependency from the production runtime test.'
+            )
+        }
     }
 }
 
@@ -70,6 +129,12 @@ tasks.register('stageRuntimeTestMods', Sync) {
     dependsOn runtimeMcpRemapTask
     from(productionJarTask.flatMap { it.archiveFile })
     from(runtimeTestProductionMods) {
+        include '*.jar'
+        exclude '*-sources.jar'
+        // Drop the named artifacts replaced by runtimeTestReobfMods.
+        exclude { isNamedRuntimeTestJar(it.name) }
+    }
+    from(runtimeTestReobfMods) {
         include '*.jar'
         exclude '*-sources.jar'
     }
@@ -130,6 +195,8 @@ tasks.register('printRuntimeTestPaths') {
         println "runtimeTestModsDir=${runtimeTestModsDir.get().asFile.absolutePath}"
         println "runtimeTestMinecraftDir=${runtimeTestMinecraftDir.get().asFile.absolutePath}"
         println "runtimeTestProductionMods=${runtimeTestProductionMods.files*.absolutePath}"
+        println "runtimeTestReobfMods=${runtimeTestReobfMods.files*.absolutePath}"
+        println "runtimeTestNamedModJars=${runtimeTestNamedModJars.files*.absolutePath}"
     }
 }
 

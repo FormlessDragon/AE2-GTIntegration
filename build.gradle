@@ -154,16 +154,6 @@ mcpForge {
     }
 }
 
-tasks.named('runClient') {
-    dependsOn 'syncDevResourcesToClasses'
-    dependsOn 'syncDevClassesToResources'
-}
-
-tasks.named('runServer') {
-    dependsOn 'syncDevResourcesToClasses'
-    dependsOn 'syncDevClassesToResources'
-}
-
 def mixinRefmap = null
 if (useMixins) {
     mixin {
