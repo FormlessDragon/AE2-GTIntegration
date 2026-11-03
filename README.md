@@ -23,6 +23,9 @@ An addon for **Applied Energistics 2 Supergiant** and **GregTech CEu**.
 - [Applied Energistics 2 Unofficial](https://github.com/GTNewHorizons/Applied-Energistics-2-Unofficial) — inspiration for the Extended Encoding Term.
 - [Modernity GTNH UI](https://github.com/ModernityGTNH/Modernity-GTNH-UI) — source of the modified assets used by the Extended Encoding Term, licensed under CC BY-NC-SA 3.0.
 
+Thanks to Skyless for the logo.
+Finally, thank you to everyone still contributing to the 1.12 modding community.
+
 ## License
 
 The assets modified from [Modernity GTNH UI](https://github.com/ModernityGTNH/Modernity-GTNH-UI) are licensed under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/).
